@@ -1,0 +1,152 @@
+\documentclass{article}
+
+%% Compile this with
+%% R> library(VARCOMPCI)
+
+
+
+
+\usepackage[nogin]{Sweave}
+\usepackage{pgf}
+\usepackage{fancyvrb}
+\usepackage{color}
+\usepackage[left=1.2in,right=1.2in,top=1.2in,bottom=1.2in]{geometry}
+%\VignetteIndexEntry{Batch Process}
+
+\title{Batch Process: Dry matter content in buttercream}
+\author{Civit, S., Vilardell, M., Hess, A., Matthew, Z., Ge, Y., Caballe, A.}
+
+
+\begin{document}
+
+
+%% Cache all of the code chunks and generate external figures by default 
+%% the pgfSweave defaults are pdf=FALSE and eps=FALSE and pgf=TRUE.
+%% to get normal Sweave behavior set pgf=FALSE and external=FALSE 
+
+
+
+\maketitle
+
+\section{Motivation and Background} 
+
+\cite{Ittzes A 2001} report the results of an experiment that examined the influence of dry matter content in buttercream .\\
+A typical problem in the application of statistical process control is that of the several variance components of the variable. We can encounter it, for example, in the control of the dry matter content in buttercream. This production is a batch process since the buttercream is mixed in a cutter. The variation of the dry matter content comes from the deviation of the compound, of the sample units and of the measurements of the same sample unit. The variance of the process is estimated from these components.\\
+
+
+
+\section{Data Modelling}
+The "own regulation" for dry matter content in buttercream is a minimum of 45\%. This value is given on the production sheet, which was approved by the competent food authority. In the manufacturing process, the dry matter content has to be set so that despite the variations it does not drop under 45\%. Prior to introducing the process control, measurements were carried out in order to examine the significance of the variance components and to estimate them. For this prior investigation out of r=8 compounds, which can be considered as batches, m=5 samples were taken, on which n=3 parallel measurements were carried out.\\
+
+The nested model: 
+
+
+ $X_{ijk}$ = $\mu$+ $A_{i}$ + $B_{j(i)}$ + $e_{ijk}$  
+
+\begin{enumerate} 
+\item $X_{ijk}$ represents the $kth$ measurement of the $gth$ gene expression of $jth$ chemical compound of the $ith$ group evaluated in the $k-th$ cell line. 
+\item $\mu$ the mean of expression 
+\item $A_{i}$ the effect of the $ith$ group 
+\item $B_{j(i)}$ the effect of the $jth$ compound within the $ith$ group 
+\item $e_{ijk}$ the measurement error term. 
+\end{enumerate} 
+ 
+It is assumed that $A_{i}$, $B_{j(i)}$ and $e_{ijk}$´s are normal distributed with 0 expected value with standard deviations; $\sigma_A$ $\sigma_B$ and $\sigma_e$ respectively, and that these two sequences of random variables are independent of each other. The data were evaluated by analysis of variance (ANOVA) based on this nested model.
+
+\section{Usage}
+
+\subsection{The data}
+
+The data for this example is supplied in the VARCOMPCI package;
+
+<<>>=
+
+library(varcompci)
+data(batch_process)
+
+dim(batch_process)
+head(batch_process)
+
+@
+
+
+
+\subsubsection{A VARCOMPCI overview}
+
+To use VARCOMPCI package is necessary to specify the data set, the response, the factors that we would like to test and write a design matrix;\\
+
+<<>>=
+dsn="batch_process"
+response="Measurement"
+totvar=c("Comp", "Batch")
+Matrix=cbind(c(1,0),c(1,1))
+Matrix
+@
+
+Applying the varcompci function to get an ANOVA for the nested model;
+
+<<>>=
+
+x<-varcompci(dsn=dsn,response=response, totvar=totvar, Matrix=Matrix, sasnames=TRUE)
+x["ANOVA"]
+@
+
+The random effect estimates are obtained from;
+
+<<>>=
+x["EMS"]
+x["CI"]
+
+@
+
+As we can see from the ANOVA table, all the factors taking account in this model were significant for the model.
+
+This situation is typical for many types of batch processes and in this context it is advisable to monitor the different variance components
+
+Thus, estimates for the random effects $\sigma_A$ $\sigma_B$ and $\sigma_e$ are provided using the CI method with the varcompci function. The estimates were 0.87, 0.13 and 0.05 respectively.
+
+The global performance of the model can be obtained from;
+
+<<>>=
+
+x["aic"]
+x["bic"]
+@
+
+The covariance parameter estimates could be obtained from;
+<<>>=
+
+x["variance"]
+
+@
+
+The Random and Fixed Mean Squares are provided from;
+
+<<>>=
+
+x["Meansq"]
+
+@
+
+
+\subsection{VARCOMPCI Conclusions for buttercream study}
+
+According to the results of the ANOVA, the variation of the dry matter content in buttercream is due to several 
+significant factors and the large variation between the samples implies with this compound the buttercream remained all too inhomogeneous 
+in the cutter, even though the average dry matter content shows no problems. 
+It would be justified to take corrective action in the process and to make the buttercream more homogeneous before filling the cartons with it. 
+
+
+
+\section{Note}
+
+This vignette is based on: VARCOMPCI: A Package for Computation of Confidence Intervals for Variance Components of Mixed Models in R"
+
+\begin{thebibliography}{XXX}
+
+
+\bibitem{Ittzes A 2001} "Statistical Process Control with Several Variance Components In the Dairy Industry." \textit{Food Control}, \textbf{12}, 119-125
+
+\end{thebibliography}
+
+\end{document}

@@ -1,0 +1,15 @@
+
+exportMethods(
+    "[",
+    "show" 
+)
+
+S3method(summary,varcompciC)
+
+exportClasses(
+    "EMSc",
+     "varcompciC" 
+)
+import(stats)
+
+export(varcompci,prettyEMSf)

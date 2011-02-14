@@ -1,0 +1,399 @@
+\documentclass{article}
+
+%% Compile this with
+%% R> library(VARCOMPCI)
+
+
+
+
+\usepackage[nogin]{Sweave}
+\usepackage{pgf}
+\usepackage{fancyvrb}
+\usepackage{color}
+\usepackage[left=1.2in,right=1.2in,top=1.2in,bottom=1.2in]{geometry}
+%\VignetteIndexEntry{Gene Response Characterization of AKT inhibitors}
+
+\title{Gene Response Characterization of AKT inhibitors; \\
+ Colorectal Cancer Cell Lines}
+\author{Civit, S., Vilardell, M., Hess, A., Matthew, Z., Ge, Y., Caballe, A.}
+
+
+\begin{document}
+
+
+%% Cache all of the code chunks and generate external figures by default 
+%% the pgfSweave defaults are pdf=FALSE and eps=FALSE and pgf=TRUE.
+%% to get normal Sweave behavior set pgf=FALSE and external=FALSE 
+
+
+
+\maketitle
+
+\section{Motivation and Background} 
+
+Cell lines are widely used as \textit{in vitro} systems to characterize the genetic response of chemical compounds. They are a crucial step for therapeutic proposals. However, contradictory results are getting from different cell lines whose try to study the same biological system.  \\
+ 
+The report by \cite{Krech T et al 2010} shows the results from two experiments (GSE18232, GSE18005) that could be used to determine the gene response to AKT inhibitors in \textit{in vitro systems}.  \\
+ 
+To assess the effect of AKT inhibitors, 5 chemical compounds which act as AKT ihibitors (group 1) were tested  versus 4 chemical compounds which are not characterized as direct AKT1 inhibitors (group 2) over three different cell lines (HCT116, HT29 and SW480). One independent model was performed by each gene (N=11,853).  \\
+ 
+In this example, we try to evaluate the AKT1 gene expression response after applying two groups of different compounds. 
+
+\section{Data Modelling}
+
+The complete model from the data can be written as follows; 
+
+ $X_{gijk}$ = $\mu_{g}$+ $A_{gi}$ + $B_{gj(i)}$ + $ C_{gk}$+ $AC_{gik}$ +$e_{gijk}$  
+
+\begin{enumerate} 
+\item $X_{gijk}$ represents the $kth$ measurement of the $gth$ gene expression of $jth$ chemical compound of the $ith$ group evaluated in the $k-th$ cell line. 
+\item $\mu_{g}$ the mean of expression of the $gth$ gene 
+\item $A_{gi}$ the effect of the $ith$ group 
+\item $B_{gj(i)}$ the effect of the $jth$ compound within the $ith$ group 
+\item $ C_{gk}$ the effect of the $kth$ cell-line 
+\item $ AC_{gki}$ the effect of the $kth$ cell-line 
+\item $e_{gijk}$ the measurement error term. 
+\end{enumerate} 
+ 
+It is assumed that $A_{gi}$ is a fixed effect whileas $B_{gj(i)}$ and $e_{gijk}$큦 are normal distributed with 0 expected value and $\sigma_B$, $\sigma_e$ respectively, and that these two sequences of random variables are independent of each other. The data were evaluated by analysis of variance (ANOVA) based on this nested model.
+
+\section{Usage}
+
+\subsection{The data}
+
+The processed data is supplied in the VARCOMPCI package from GSE18232 and GSE18005 experiments. The data can be easy loaded as follows;
+
+<<>>=
+
+library(varcompci)
+data(dataAKT_I)
+data(deadAKT_I)
+dim(dataAKT_I)
+head(dataAKT_I[,c(1:3)])
+dim(deadAKT_I)
+head(deadAKT_I)
+
+@
+
+
+\subsection{The effects over AKT1 gene }
+
+The first point is to compare the classical R outputs with VARCOMPCI package.
+
+\subsubsection{A classical ANOVA model with R}
+
+The chemical compounds from group 1 are known inhibitors of AKT1 gene. In this section we attempted to evaluate the compound effects on AKT1 over the three cell lines under study.
+
+
+<<>>=
+row.names(dataAKT_I)<-as.character(dataAKT_I[,1])
+akt1<-dataAKT_I["ENSG00000142208",]
+#akt1
+a_akt1<-aov(t(akt1[1,as.character(deadAKT_I$NAME)])~ as.factor(deadAKT_I$CL)*as.factor(deadAKT_I$G) + as.factor(deadAKT_I$G)*as.factor(deadAKT_I$Q))
+summary(a_akt1)
+@
+
+
+
+A group effect is detected and plotted as follow;
+
+<<fig=T>>=
+aux<-paste(deadAKT_I$G, deadAKT_I$Q,sep="")
+lab<-c("G1_Q1","G1_Q2", "G1_Q3", "G1_Q4", "G1_Q5","G2_Q1", "G2_Q2", "G2_Q3", "G2_Q4")
+col_lab<-c(rep(2,5),rep(4,4))
+boxplot(t(akt1[1,as.character(deadAKT_I$NAME)])~as.factor(aux), names=lab, col=col_lab)
+abline(h=0, col=3, lwd=2)
+@
+
+
+
+A clear repressive effect, as expected, on AKT1 gene is oberved for group 1 except for Q4 compound, whileas an effect around 0 or over where found in group 2.  Note that some of the compounds in group 2 can act, indirectly, as  activators of AKT1. \\
+
+%We can also plot the interaction plot for group and cell line
+
+%<<fig=T>>=
+%interaction.plot(as.factor(deadAKT_I$CL),as.factor(deadAKT_I$G),t(akt1[1,as.character(deadAKT_I$NAME)]))
+%@
+
+Taking account that Krech T et al 2010 \cite{Krech T et al 2010} cited that the unexpected non-inhibitor effect observed in compound Q4 (Wolframin) must be interpreted carefully because of not working in the optimal conditions for this compound, we could eliminate Q4 to get a balanced ANOVA in further studies.\\
+
+Then, a classical balanced ANOVA could be calculated as follows;
+
+<<>>=
+deadAKT_I$eff<-as.vector(aux)
+deadAKT_I2<-subset(deadAKT_I, eff!="14")
+#deadAKT_I2<-subset(deadAKT_I, eff!="23")
+#deadAKT_I2<-subset(deadAKT_I2, eff!="25")
+deadAKT_I2$Q[deadAKT_I2$eff=="15"]<-4
+#deadAKT_I2$Q[deadAKT_I2$Q==5]<-2
+a_akt1_2<-aov(t(akt1[1,as.character(deadAKT_I2$NAME)])~ as.factor(deadAKT_I2$CL)*as.factor(deadAKT_I2$G) + as.factor(deadAKT_I2$G)*as.factor(deadAKT_I2$Q))
+summary(a_akt1_2)
+@
+
+
+
+<<>>=
+#coef(a_akt1_2)
+@
+
+\subsubsection{A VARCOMPCI overview}
+
+We can use VARCOMPCI to test the compound effect over AKT1 gene. The compound effect could be considered as a random factor in the model. To reach that, it is necessary to create an unique dataset for AKT1; 
+
+<<>>=
+varcomp_akt<-data.frame(t(akt1[1,as.character(deadAKT_I$NAME)]))
+varcomp_akt$G<-as.vector(deadAKT_I$G)
+varcomp_akt$Q<-as.vector(deadAKT_I$Q)
+#varcomp_akt$Q<-as.vector(deadAKT_I$eff)
+varcomp_akt$CL<-as.vector(deadAKT_I$CL)
+varcomp_akt
+@
+
+The design matrix can be defined as follow, 
+<<>>=
+Matrix=cbind(c(1,0),c(0,1))
+Matrix
+@
+
+Applying the varcompci function to get an ANOVA for crossing effects;
+
+<<>>=
+totvar=c("Q","CL")
+response="ENSG00000142208"
+dsn="varcomp_akt"
+x<-varcompci(dsn="varcomp_akt",response=response, totvar=totvar, Matrix=Matrix)
+x["ANOVA"]
+@
+
+The random effect estimates are obtained from;
+
+<<>>=
+
+x["EMS"]
+x["CI"]
+@
+
+A nested model with VARCOMPCI;
+
+
+<<>>=
+totvar=c("G","Q")
+Matrix=cbind(c(0,0),c(1,1))
+
+x<-varcompci(dsn="varcomp_akt",response=response, totvar=totvar, Matrix=Matrix)
+x["ANOVA"]
+
+x["EMS"]
+x["CI"]
+@
+
+Similar results were obtained when we used balanced ANOVA data.
+
+
+<<>>=
+varcomp_akt<-data.frame(t(akt1[1,as.character(deadAKT_I2$NAME)]))
+varcomp_akt$G<-as.vector(deadAKT_I2$G)
+varcomp_akt$Q<-as.vector(deadAKT_I2$Q)
+#varcomp_akt$Q<-as.vector(deadAKT_I2$eff)
+
+varcomp_akt$CL<-as.vector(deadAKT_I2$CL)
+
+@
+<<>>=
+Matrix=cbind(c(1,0),c(0,1))
+totvar=c("Q","CL")
+response="ENSG00000142208"
+dsn="varcomp_akt"
+x<-varcompci(dsn="varcomp_akt",response=response, totvar=totvar, Matrix=Matrix)
+x["ANOVA"]
+x["EMS"]
+totvar=c("G","Q")
+Matrix=cbind(c(0,0),c(1,1))
+
+x<-varcompci(dsn="varcomp_akt",response=response, totvar=totvar, Matrix=Matrix)
+x["ANOVA"]
+x["EMS"]
+
+@
+
+
+
+Finally, we can conclude that exists a clear group effect. Although, no effects to compounds or cell lines were found, we must be careful with the conclusions due to small sample size and the fact that no replicates were provided. Anyway, varcompci provides a framework to easily test nested and crossed anova models with random effects.
+
+\subsection{Testing other genes effects with VARCOMPCI}
+
+The Krech et T al 2010 \cite{Krech T et al 2010} study provides information for other gene effects. Here we used VARCOMPCI to test them. Firstly we must find the ensembl identifier for each one.
+This can be provided using biomart from R;
+
+<<>>=
+hugos<-c("NUSAP1", "GAPDH","ASPM","PRC1", "CENPF")
+inf<- c("ENSG00000137804", "ENSG00000111640", "ENSG00000066279", "ENSG00000198901","ENSG00000117724")
+inf<-cbind(inf, hugos)
+inf
+@
+
+\subsubsection{Testing Cell Line and Group effect}
+
+In the following code, we only show the ANOVA tables since the Cell Line effects were not found to be statistically significant and it is possible to get negative values for the variance parameter estimates.
+
+<<>>=
+for(k in 1:dim(inf)[1]){
+varcomp_k<-data.frame(t(dataAKT_I[as.character(inf[k,1]),as.character(deadAKT_I2$NAME)]))
+varcomp_k$G<-as.vector(deadAKT_I2$G)
+varcomp_k$Q<-as.vector(deadAKT_I2$Q)
+#varcomp_k$Q<-as.vector(deadAKT_I2$eff)
+varcomp_k$CL<-as.vector(deadAKT_I2$CL)
+totvar=c("G","CL")
+Matrix=cbind(c(1,0),c(0,1))
+response<-names(varcomp_k)[1]
+x<-varcompci(dsn="varcomp_k",response=response, totvar=totvar, Matrix=Matrix)
+print(inf[k,2])
+print(x["ANOVA"])
+#print(varcompci(dsn="varcomp_k",response=response, totvar=totvar, Matrix=Matrix,vecprint=c("EMS","CI")))
+}
+
+@
+
+
+
+
+\subsubsection{Testing Compound and Group effect}
+
+In the following code, we showed ANOVA tables and estimates because of the significance of some Compound Effects.
+
+<<>>=
+for(k in 1:dim(inf)[1]){
+varcomp_k<-data.frame(t(dataAKT_I[as.character(inf[k,1]),as.character(deadAKT_I2$NAME)]))
+varcomp_k$G<-as.vector(deadAKT_I2$G)
+varcomp_k$Q<-as.vector(deadAKT_I2$Q)
+#varcomp_k$Q<-as.vector(deadAKT_I2$eff)
+varcomp_k$CL<-as.vector(deadAKT_I2$CL)
+totvar=c("G","Q")
+Matrix=cbind(c(0,0),c(1,1))
+response<-names(varcomp_k)[1]
+x<-varcompci(dsn="varcomp_k",response=response, totvar=totvar, Matrix=Matrix)
+print(inf[k,2])
+print(x["ANOVA"])
+#print(x["EMS"])
+print(x["CI"])
+}
+
+@
+
+
+
+\subsection{VARCOMPCI Conclusions for AKT Inhibitors study}
+
+The group of AKT1 inhibitors decressed the expression of AKT1 gene without large Cell Lines (CL) effect neither Compound (Q) effect. 
+Then AKT1 expression can be modelling as follows;\\
+$X_{gijk}$ = $\mu_{g}$  +$e_{gijk}$ 
+
+\begin{enumerate} 
+\item $X_{gijk}$ represents the $kth$ measurement of the $gth$ gene expression of $jth$ chemical compound of the $ith$ group evaluated in the $k-th$ cell line. 
+\item $\mu_{g}$ the mean of expression of the $gth$ gene 
+\item $e_{gijk}$ the measurement error term. 
+\end{enumerate} 
+
+It is assumed that $A_{gi}$ is a fixed effect whileas  $e_{gijk}$ is normal distributed with 0 expected value and standard deviation $\sigma_e$.\\
+
+To estimate the effects we could use a standard balanced ANOVA computed in R; 
+
+<<>>=
+a_akt1_2<-aov(t(akt1[1,as.character(deadAKT_I2$NAME)])~  as.factor(deadAKT_I2$G))
+summary(a_akt1_2)
+coef(a_akt1_2)
+@
+
+This means that an ihnibition effect in AKT1 gene is around -0.3 whileas the gene expression under the second group of Compounds is increasing around 0.3. The estimation of $\sigma_e$ is given by the ANOVA table (Mean squares) and is; 
+
+<<>>=
+sqrt(0.2163)
+@
+
+For the other genes under study, we did not detect a Cell Line effect; however it is not possible to discard a Compound effect over the gene expression. For this reason the best model to represent the data, must be written as follows;
+
+ $X_{gijk}$ = $\mu_{g}$ + $B_{gj(i)}$ +$e_{gijk}$ 
+
+\begin{enumerate} 
+\item $X_{gijk}$ represents the $kth$ measurement of the $gth$ gene expression of $jth$ chemical compound of the $ith$ group evaluated in the $k-th$ cell line. 
+\item $\mu_{g}$ the mean of expression of the $gth$ gene 
+\item $B_{gj(i)}$ the effect of the $jth$ compound within the $ith$ group 
+\item $e_{gijk}$ the measurement error term. 
+\end{enumerate} 
+
+It is assumed that $A_{gi}$ is a fixed effect whileas $B_{gj(i)}$ and $e_{gijk}$큦 are normal distributed with 0 expected value and $\sigma_B$, $\sigma_e$ respectively, and that these two sequences of random variables are independent of each other. 
+
+The global gene effect, $\mu_{g}$, could be estimated applying a mean function;
+
+<<>>=
+akt_2<-dataAKT_I[as.character(inf[,1]),as.character(deadAKT_I2$NAME)]
+apply(akt_2,1, mean)
+@
+
+A global down regulation is found for these genes as comented in Krech et al study \cite{Krech T et al 2010}.
+
+
+
+$B_{gj(i)}$ and $e_{gijk}$ estimates are provided by VARCOMPCI. Estimation of $(e_{gijk})^2$ is provided by VARCOMPCI ANOVA table (Mean Squares) whileas estimation for $B_{gj(i)}$ is provided by VARCOMPCI components of variance. For example, for PRC1 gene, a global effect $\mu_{g}$ is estimated by using the mean with a value of -1.07 with total variance of $B_{gj(i)}$ + $e_{gijk}$ = 2.06 + 0.597.
+
+
+
+\section{Note }
+
+We prepared the files and classified the compounds as described in Krech T el al. 2010 \cite{Krech T et al 2010}. In addition other supporting information about the role of the compounds were extract from the literature. We found evidence for AKT1 direct inhibition through PIK3/AKT pathway (group 1) for:  LY294001 (Q1, \cite{Chambers MA et al 2009});  SH-5 (Q2,\cite{Sethi G et al 2008}),  SH6 (Q3, \cite{Tomek W et al 2005}), Wortmannin (Q4,\cite{Chambers MA et al 2009}) and SulindacSulfide (Q5, \cite{Shigeoka et al 2004}). \\
+
+Additional information provided evidences for non-direct inhibition of AKT1 for the following compounds (group 2); AG1478 (inhibitor of EGF receptor tyrosine kinase, Q1, \cite{Ellis AG et al 2006}), PD98059 (inhibitors of the MAPK3/MAPK1 signaling pathways, Q2, \cite{Di Paola R et al 2009}), SulindacSulfone (Increased psca promoter activity, Q3, \cite{Zemskova et al 2006}), U0126 (MEK-inhibitor, Q4, \cite{Farrokhnia N et al 2008}).
+
+
+
+
+\begin{thebibliography}{XXX}
+\bibitem{Chambers MA et al 2009} Chambers MA, Moylan JS, Smith JD, Goodyear LJ, Reid MB. Stretch-stimulated
+glucose uptake in skeletal muscle is mediated by reactive oxygen species and p38 MAP-kinase. J Physiol. 2009 Jul 1;587(Pt 13):3363-73. Epub 2009 Apr 29. PubMed
+
+
+
+\bibitem{Di Paola R et al 2009} Di Paola R, Crisafulli C, Mazzon E, Genovese T, Paterniti I, Bramanti P,
+Cuzzocrea S. Effect of PD98059, a selective MAPK3/MAPK1 inhibitor, on acute lung injury in mice. Int J Immunopathol Pharmacol. 2009 Oct-Dec;22(4):937-50.
+
+
+\bibitem{Ellis AG et al 2006} Ellis AG, Doherty MM, Walker F, Weinstock J, Nerrie M, Vitali A, Murphy R,
+Johns TG, Scott AM, Levitzki A, McLachlan G, Webster LK, Burgess AW, Nice EC. Preclinical analysis of the analinoquinazoline AG1478, a specific small molecule 
+inhibitor of EGF receptor tyrosine kinase. Biochem Pharmacol. 2006 May 14;71(10):1422-34. 
+
+
+\bibitem{Farrokhnia N et al 2008} Farrokhnia N, Ericsson A, Terant A, Lennmyr F. MEK-inhibitor U0126 in
+hyperglycaemic focal ischaemic brain injury in the rat. Eur J Clin Invest. 2008
+Sep;38(9):679-85.
+
+
+\bibitem{Krech T et al 2010} Krech T, Thiede M, Hilgenberg E, Sch채fer R, J체rchott K. Characterization of
+AKT independent effects of the synthetic AKT inhibitors SH-5 and SH-6 using an
+integrated approach combining transcriptomic profiling and signaling pathway
+perturbations. BMC Cancer. 2010 Jun 14;10:287. 
+
+
+ \bibitem{Sethi G et al 2008}Sethi G, Ahn KS, Sung B, Kunnumakkara AB, Chaturvedi MM, Aggarwal BB. SH-5, an
+AKT inhibitor potentiates apoptosis and inhibits invasion through the suppression
+of anti-apoptotic, proliferative and metastatic gene products regulated by
+IkappaBalpha kinase activation. Biochem Pharmacol. 2008 Dec 1;76(11):1404-16.
+
+\bibitem{Shigeoka et al 2004} Shigeoka Y, Igishi T, Matsumoto S, Nakanishi H, Kodani M, Yasuda K, Hitsuda Y,
+Shimizu E. Sulindac sulfide and caffeic acid phenethyl ester suppress the 
+motility of lung adenocarcinoma cells promoted by transforming growth factor-beta
+through Akt inhibition. J Cancer Res Clin Oncol. 2004 Mar;130(3):146-52.
+
+
+\bibitem{Tomek W et al 2005} Tomek W, Smiljakovic T. Activation of Akt (protein kinase B) stimulates
+metaphase I to metaphase II transition in bovine oocytes. Reproduction. 2005
+Oct;130(4):423-30. 
+
+
+\bibitem{Zemskova et al 2006} Zemskova M, Wechter W, Bashkirova S, Chen CS, Reiter R, Lilly MB. Gene
+expression profiling in R-flurbiprofen-treated prostate cancer: R-Flurbiprofen
+regulates prostate stem cell antigen through activation of AKT kinase. Biochem
+Pharmacol. 2006 Nov 15;72(10):1257-67. 
+
+\end{thebibliography}
+
+\end{document}
