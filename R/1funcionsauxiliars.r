@@ -674,91 +674,52 @@ EMSmatrix=function(possibilities,Matrix,nv,countper,totvar,...){
 
 
  # Result EMS
-  EMS=function(subscripfact,typefact,nvari,matrix_EMS,matrixnameslnw,nv){
+EMS=function(subscripfact,typefact,nvari,matrix_EMS,matrixnameslnw,nv){
    result_EMS=matrix(0,nrow=nvari,ncol=nvari)
    namesdesc=matrix("",nrow=nvari,ncol=nvari)
-   i=nvari
-   while (i>0){
-    pos=1
-    for (j in nvari:i){
-      k=1
-   	decident=FALSE
-      while (k<(nv+1)){
-       if ((subscripfact[i,k]==subscripfact[j,k])||(subscripfact[i,k]=='')){
-	  k=k+1
-	  decidint=TRUE
-	 }
-       else{k=6;decidint=FALSE}
-      }
-      if (decidint==TRUE){
-       if(typefact[j]=="R"){
-	  result_EMS[i,pos]=matrix_EMS[j,(nv+1)]
-	  r=1
-	  while(r<(nv+1)){
-	   if(subscripfact[j,r]!=subscripfact[nvari,r]){
-	    result_EMS[i,pos]=result_EMS[i,pos]*matrix_EMS[j,r]
-         }
- 	   r=r+1
-        }
-	  if (i!= j){
-	   namesdesc[i,pos]=matrixnameslnw[j]}
-	   pos=pos+1
-	  }
-        else{if(i==j){result_EMS[i,pos]=99999;pos=pos+1}
-       }
-      }
-     }
-     i=i-1
+  
+   for (i in 1:(nvari-1)){
+	for (j in nvari:1)
+       result_EMS[i,(nvari-j+1)] = prod(matrix_EMS[j,-which(subscripfact[i,]!="")])*
+                             as.numeric(all(subscripfact[i,subscripfact[i,]!=""]==
+                        subscripfact[j,subscripfact[i,]!=""])) 
+   }
+    result_EMS[nvari,]=c(1,rep(0,nvari-1))
+    
+    for (i in 1:nvari){
+      if(typefact[i]=="F")
+ 	  result_EMS[i,(nvari-i+1)]=99999
     }
-
-    # final matrix of expected mean square
+    for (i in 1:nvari){
+      for (j in 1:nvari){
+          if (result_EMS[i,j]!=0)
+               (namesdesc[i,j]=matrixnameslnw[(nvari-j+1)])
+          else namesdesc[i,j]=""  
+    }}
     rownames(result_EMS)=matrixnameslnw
     rEMS=list(result_EMS,namesdesc)
     return(rEMS)
    }
 
 
+
  # EMS less fixe
-  EMSlF=function(result_EMS,typefact){
-  result_EMSlF=result_EMS
-  countR=0
-  for (i in nrow(result_EMS):1){
-   if (typefact[i]=="F"){
-    result_EMSlF=result_EMSlF[-i,]
-   }
-   if (typefact[i]=="R"){
-	countR=countR+1
-   }
-  }
-   if (countR>1){
-    while (nrow(result_EMSlF)!=ncol(result_EMSlF)){
-     result_EMSlF=result_EMSlF[,-ncol(result_EMSlF)]
-    }
-   }
+EMSlF=function(result_EMS,typefact,nvari){
+   result_EMSlF=result_EMS[-which(typefact=="F"),-(nvari-which(typefact=="F")+1)]  
    return(result_EMSlF)
  }
 
 
+
  # the last EMS for all effects
   last_EMS=function(nvari,result_EMS){
-   i=1
-   j=2
-   final_EMS=matrix(0,ncol=nvari)
-   while (i<(nvari+1)){
-    j=2
-    pass=FALSE
-    while((j<nvari+1)&&(pass==FALSE)){
-     if(result_EMS[i,j]!=0){
-      j=j+1
-     }
-    else{final_EMS[i]=result_EMS[i,j-1];pass=TRUE}
-   }
-   if (j==(nvari+1)){
-    final_EMS[i]=result_EMS[i,j-1] }
-    i=i+1
-   }
-  return(final_EMS)
+  
+   final_EMS<-numeric(nvari)
+   for (i in 1:nvari)
+          final_EMS[i] <-result_EMS[i,(nvari-i+1)]
+   return(as.matrix(final_EMS))
   }
+
 
 
  # covariance paramaters
@@ -801,18 +762,18 @@ EMSmatrix=function(possibilities,Matrix,nv,countper,totvar,...){
 
 
  # Fvalues
-  fvalues=function(namesdesc,result_EMS,varianceRE,nvari,Meansq,df){
+   fvalues=function(namesdesc,result_EMS,varianceRE,nvari,Meansq,df){
    Errorterm=array(0,dim=c(nvari,1))
    for (i in 1:nvari){
-    j=1
-    while (namesdesc[i,j]!=""){
-	aux=namesdesc[i,j]
-	if(result_EMS[i,j]!=99999){
-	 Errorterm[i,1]= Errorterm[i,1]+ result_EMS[i,j]*varianceRE[aux,1]
-	}
-	j=j+1
+     for (j in 1:nvari){
+      if((namesdesc[i,j]!="")&&(i!=nvari-j+1)){
+    	   aux=namesdesc[i,j]
+	     if(result_EMS[i,j]!=99999)
+	       Errorterm[i,1]= Errorterm[i,1]+ result_EMS[i,j]*varianceRE[aux,1]
+      }
     }
    }
+
    Fval=array(0,dim=c(nvari,1))
    Fval=Meansq/Errorterm
    Fval[nvari,1]=0
@@ -821,21 +782,17 @@ EMSmatrix=function(possibilities,Matrix,nv,countper,totvar,...){
    ddf=matrix(0,ncol=1,nrow=nvari)
    rownames(df)=rownames(Meansq)
    for (i in 1:(nvari-1)){
-      j=1
-      while (namesdesc[i,j]!=""){
-        j=j+1
-      }
-      if ( Errorterm[i]==Meansq[namesdesc[i,j-1],1]){
-              ddf[i]=df[namesdesc[i,j-1],1]
+    
+     if ( Errorterm[i]==Meansq[namesdesc[i,(nvari-i+1)],1]){
+              ddf[i]=df[namesdesc[i,(nvari-i+1)],1]
       }
       else{
           denom=0
-           j=1
-           while (namesdesc[i,j]!=""){
-             denom=denom+(Meansq[namesdesc[i,j],1])^2/df[namesdesc[i,j],1]
-             j=j+1
-           }
-          ddf[i]=Errorterm[i]^2/denom
+            for (j in 1:nvari){
+              if(namesdesc[i,j]!="")
+                denom=denom+(Meansq[namesdesc[i,j],1])^2/df[namesdesc[i,j],1]
+            }
+            ddf[i]=Fval[i,1]*df[i]/(Meansq[i,1])*Errorterm[i]
       }
    }
    pval=matrix(0,ncol=1,nrow=nvari)
@@ -845,6 +802,7 @@ EMSmatrix=function(possibilities,Matrix,nv,countper,totvar,...){
    aux=list(pval,Fval)
    return(aux)
   }
+
 
   ## si l'error term és el mateix que el mean square de grau superior=> ddf= df del de grau sup
   ## sinó, cas III (suma del Ms de grau sup + suma de segon grau negatius..)^2 /suma de tots partits per els df de cada un .
@@ -931,28 +889,29 @@ EMSmatrix=function(possibilities,Matrix,nv,countper,totvar,...){
 
 
  # return pretty EMS
-  EMSwdesc=function(result_EMS,namesdesc,nvari,matrixnameslnw){
+ EMSwdesc=function(result_EMS,namesdesc,nvari,matrixnameslnw){
    prettyEMS=matrix("",ncol=1,nrow=nvari)
    for (i in 1:(nvari-1)){
     j=1
     aux=paste("var(Resid)")
-    j=2
-    while( namesdesc[i,j]!=""){
-     aux=paste(aux,paste(result_EMS[i,j],"var(",namesdesc[i,j],")",sep=""),sep=" + ")
-     j=j+1
+    for (j in 2:nvari){
+      if (i!=(nvari-j+1)){
+       if(namesdesc[i,j]!="")
+           aux=paste(aux,paste(result_EMS[i,j],"var(",namesdesc[i,j],")",sep=""),sep=" + ")
+       }}
+     if (result_EMS[i,(nvari-i+1)]==99999)
+           prettyEMS[i,1]=paste(aux,paste("Q(",matrixnameslnw[i],")", sep=""),sep=" + ")
+       
+     if (result_EMS[i,(nvari-i+1)]!=99999)
+       prettyEMS[i,1]=paste(aux,paste(result_EMS[i,(nvari-i+1)],"var(",matrixnameslnw[i],")",sep=""),sep=" + ")
+    
     }
-    if (result_EMS[i,j]==99999){
-     prettyEMS[i,1]=paste(aux,paste("Q(",matrixnameslnw[i],")", sep=""),sep=" + ")
-    }
-    if (result_EMS[i,j]!=99999){
-     prettyEMS[i,1]=paste(aux,paste(result_EMS[i,j],"var(",matrixnameslnw[i],")",sep=""),sep=" + ")
-    }
-   }
    prettyEMS[nvari,1]=paste("var(Resid)")
    rownames(prettyEMS)=matrixnameslnw
    colnames(prettyEMS)="EMS"
    return(prettyEMS)
   }
+
 
  # prints
   printvariance=function(varianceRE){

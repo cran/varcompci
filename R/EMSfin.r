@@ -46,7 +46,7 @@
    object@result_EMS=rEMS[[1]]
 	 object@namesdesc=rEMS[[2]]
    object@EMSpretty=EMSwdesc(object@result_EMS,object@namesdesc,nvari,matrixnameslnw)
-   object@result_EMSlF=as.matrix(EMSlF(object@result_EMS,typefact))
+   object@result_EMSlF=as.matrix(EMSlF(object@result_EMS,typefact,nvari))
    object@final_EMS=last_EMS(nvari,object@result_EMS)
   return(object)
  }   

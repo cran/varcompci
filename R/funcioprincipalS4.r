@@ -94,12 +94,17 @@ setMethod(
 	 bic=infoaov[[3]]
  	 Meansq=aov$'Mean Sq'
  	 Meansq=t(t(Meansq))
+ 	 Df<-t(t(aov$Df))
+ 	 if((nrow(Meansq))<nrow(matrixnameslnw)) {
+ 	 	   Df<- as.matrix(c(t(t(aov$Df))[1:(nrow(Meansq)-1),1],rep(0,nrow(matrixnameslnw)- nrow(Meansq)),t(t(aov$Df))[nrow(Meansq)]))
+       Meansq<- as.matrix(c(Meansq[1:(nrow(Meansq)-1),1],rep(0,nrow(matrixnameslnw)- nrow(Meansq)),Meansq[nrow(Meansq)]))
+ 	   }
  	 rownames(Meansq)= matrixnameslnw
  	 colnames(Meansq)= " Mean Sq "
   # Variance of Random Effects ##
    varianceRE=covpar(subscripfact,nvari,Meansq,ems@final_EMS,matrixnameslnw,typefact,nv)
 	# Fvalues
- 	 FPval=fvalues(ems@namesdesc,ems@result_EMS,varianceRE,nvari,Meansq,t(t(aov$Df)))
+ 	 FPval=fvalues(ems@namesdesc,ems@result_EMS,varianceRE,nvari,Meansq,Df)
 	 Fval=FPval[[2]]
 	 Pval=FPval[[1]]
   # Print Anova
